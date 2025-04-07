@@ -9,5 +9,4 @@ PyMuPDF
 websockets
 openai
 whisper
-pyaudio
 numpy
