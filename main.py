@@ -3,12 +3,12 @@
 import asyncio
 import json
 import os
-from fastapi import FastAPI, Request, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
-from realtime_assistant import run_assistant  # From your full assistant script
+from realtime_assistant import run_assistant  # From your cloud-safe assistant
 from fill_pdf_logic import fill_pdf  # From your working PDF filler script
 
 app = FastAPI()
@@ -25,7 +25,7 @@ async def index(request: Request):
 @app.post("/start-assistant")
 async def start_assistant():
     try:
-        await run_assistant()  # This is your full realtime assistant script
+        await run_assistant()
         return {"status": "success"}
     except Exception as e:
         return {"status": "error", "detail": str(e)}
@@ -35,10 +35,9 @@ async def get_form_data():
     if os.path.exists("filled_form.json"):
         with open("filled_form.json", "r", encoding="utf-8") as f:
             raw_data = json.load(f)
-        # ✅ Only return fields with meaningful values
         filtered_data = {
             k: v for k, v in raw_data.items()
-            if v is not None and v != "" and v != "null"
+            if v and v.strip().lower() != "null"
         }
         return JSONResponse(content=filtered_data)
     return JSONResponse(content={}, status_code=404)
@@ -48,11 +47,9 @@ async def confirm_form(request: ConfirmRequest):
     if request.confirmed:
         with open("filled_form.json", "r", encoding="utf-8") as f:
             field_values = json.load(f)
-
-        input_pdf = "form_template.pdf"  # Make sure this matches your PDF file
+        input_pdf = "form_template.pdf"
         output_pdf = "output_filled.pdf"
         fill_pdf(input_pdf, output_pdf, field_values)
-
         return {"status": "filled", "download_url": "/download"}
     return {"status": "cancelled"}
 
