@@ -9,3 +9,4 @@ websockets
 openai
 whisper
 numpy
+jinja2
