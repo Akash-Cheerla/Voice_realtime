@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FRI REALTIME MERCHANT FILLING DEMO</title>
+  <style>
+    body {
+      background-color: #121212;
+      color: #e0e0e0;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h1 {
+      margin-bottom: 1rem;
+      color: #00ffc8;
+    }
+
+    button {
+      padding: 0.8rem 1.5rem;
+      background-color: #1f1f1f;
+      border: 1px solid #00ffc8;
+      color: #00ffc8;
+      cursor: pointer;
+      border-radius: 6px;
+      font-size: 1rem;
+      margin-top: 1rem;
+    }
+
+    button:hover {
+      background-color: #00ffc8;
+      color: #121212;
+    }
+
+    #assistantIntro {
+      margin-top: 2rem;
+      font-size: 1.2rem;
+      font-style: italic;
+      color: #00ffc8;
+      display: none;
+      animation: fadeIn 1s ease forwards;
+    }
+
+    #pulseIndicator {
+      margin-top: 1rem;
+      font-size: 1.2rem;
+      color: #00ffc8;
+      display: none;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.4; }
+      100% { opacity: 1; }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    #formSection {
+      display: none;
+      margin-top: 2rem;
+    }
+
+    pre {
+      background: #1e1e1e;
+      padding: 1rem;
+      border-radius: 6px;
+      width: 100%;
+      max-width: 700px;
+      overflow-x: auto;
+      margin-top: 1rem;
+    }
+
+    #downloadLink {
+      margin-top: 1rem;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>FRI REALTIME MERCHANT FILLING DEMO</h1>
+
+  <button onclick="startAssistant()">Start Voice Assistant</button>
+  <button onclick="manuallyEndSession()" style="display:none;">End Voice Session & Load Data</button>
+
+  <div id="assistantIntro">🧠 Hi! I’m ready whenever you are. Give it a moment to start speaking. Just answer to the assistant and I’ll take care of the paperwork – you chill..</div>
+  <div id="pulseIndicator">● Listening and Collecting data...</div>
+
+  <div id="formSection">
+    <h2>Extracted Form Data</h2>
+    <pre id="formData"></pre>
+    <button onclick="confirmAndGenerate()">Confirm & Generate PDF</button>
+    <a id="downloadLink" href="/download" download>Download Filled PDF</a>
+  </div>
+
+  <script>
+    function showAssistantPresence() {
+      document.getElementById('assistantIntro').style.display = 'block';
+      document.getElementById('pulseIndicator').style.display = 'block';
+    }
+
+    function hideAssistantPresence() {
+      document.getElementById('assistantIntro').style.display = 'none';
+      document.getElementById('pulseIndicator').style.display = 'none';
+    }
+
+    async function startAssistant() {
+      // Show assistant visuals immediately
+      showAssistantPresence();
+
+      // Start assistant in background
+      fetch('/start-assistant', { method: 'POST' })
+        .then(async (res) => {
+          const result = await res.json();
+          if (result.status === 'success') {
+            pollForFormData();
+          } else {
+            alert("Error: " + result.detail);
+            hideAssistantPresence();
+          }
+        })
+        .catch(err => {
+          console.error("Failed to start assistant:", err);
+          hideAssistantPresence();
+        });
+    }
+
+    async function pollForFormData() {
+      let tries = 0;
+      const interval = setInterval(async () => {
+        const res = await fetch('/form-data');
+        if (res.ok) {
+          const data = await res.json();
+          const filledData = {};
+          for (const [key, value] of Object.entries(data)) {
+            if (value !== null && value !== "" && value !== "null") {
+              filledData[key] = value;
+            }
+          }
+          document.getElementById('formData').textContent = JSON.stringify(filledData, null, 2);
+          document.getElementById('formSection').style.display = 'block';
+          hideAssistantPresence();
+          clearInterval(interval);
+        }
+        tries++;
+        if (tries > 30) clearInterval(interval);
+      }, 2000);
+    }
+
+    async function manuallyEndSession() {
+      const res = await fetch('/form-data');
+      if (res.ok) {
+        const data = await res.json();
+        const filledData = {};
+        for (const [key, value] of Object.entries(data)) {
+          if (value !== null && value !== "" && value !== "null") {
+            filledData[key] = value;
+          }
+        }
+        document.getElementById('formData').textContent = JSON.stringify(filledData, null, 2);
+        document.getElementById('formSection').style.display = 'block';
+        hideAssistantPresence();
+      } else {
+        alert("Form data not ready yet or conversation hasn't ended.");
+      }
+    }
+
+    async function confirmAndGenerate() {
+      const res = await fetch('/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirmed: true })
+      });
+      const result = await res.json();
+      if (result.status === 'filled') {
+        document.getElementById('downloadLink').style.display = 'inline-block';
+      } else {
+        alert("PDF generation cancelled or failed.");
+      }
+    }
+  </script>
+</body>
+</html>
