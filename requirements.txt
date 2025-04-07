@@ -6,3 +6,8 @@ python-multipart
 aiofiles
 fitz
 PyMuPDF
+websockets
+openai
+whisper
+pyaudio
+numpy
