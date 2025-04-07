@@ -4,8 +4,7 @@ pydantic
 PyPDF2
 python-multipart
 aiofiles
-fitz
-PyMuPDF
+PyMuPDF>=1.23.0
 websockets
 openai
 whisper
