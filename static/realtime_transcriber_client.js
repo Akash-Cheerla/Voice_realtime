@@ -23,7 +23,7 @@ function initWebSocket() {
 
   socket.onopen = () => {
     setStatus('listening');
-    console.log('WebSocket connected');
+    console.log('✅ WebSocket connected');
   };
 
   socket.onmessage = (event) => {
@@ -34,6 +34,7 @@ function initWebSocket() {
       window.appendAssistant?.(data.text);
     }
     if (data.audio_b64) {
+      console.log('🎧 Received audio response');
       const audioBlob = new Blob([
         Uint8Array.from(atob(data.audio_b64), c => c.charCodeAt(0))
       ], { type: 'audio/wav' });
@@ -44,17 +45,27 @@ function initWebSocket() {
   };
 
   socket.onerror = (e) => {
-    console.error('WebSocket error:', e);
+    console.error('❌ WebSocket error:', e);
     setStatus('error');
   };
 
   socket.onclose = () => {
-    console.log('WebSocket closed');
+    console.log('🔌 WebSocket closed');
     setStatus('idle');
   };
 }
 
 async function startStreamingAudio() {
+  try {
+    const hasMic = await navigator.permissions.query({ name: 'microphone' });
+    if (hasMic.state !== 'granted') {
+      alert('Microphone access not granted. Please allow mic to use the assistant.');
+      return;
+    }
+  } catch (err) {
+    console.warn('Mic permission query unsupported:', err);
+  }
+
   audioContext = new AudioContext({ sampleRate: 16000 });
   globalStream = await navigator.mediaDevices.getUserMedia({ audio: true });
   input = audioContext.createMediaStreamSource(globalStream);
@@ -62,6 +73,7 @@ async function startStreamingAudio() {
 
   processor.onaudioprocess = (e) => {
     const inputData = e.inputBuffer.getChannelData(0);
+    console.log('🎙️ Captured audio frame');
     const int16Data = convertFloat32ToInt16(inputData);
     if (socket && socket.readyState === 1) {
       socket.send(int16Data);
@@ -82,6 +94,7 @@ function convertFloat32ToInt16(buffer) {
 }
 
 window.onload = () => {
+  console.log('📡 Initializing assistant...');
   initWebSocket();
   startStreamingAudio();
 };
