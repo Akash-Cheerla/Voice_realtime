@@ -40,8 +40,21 @@ function initWebSocket() {
         instructions: "You are a helpful form-filling assistant. Ask questions one by one and extract values."
       }
     }));
+    socket.send(JSON.stringify({ type: "response.create" }));
+
+    // 🗣️ Send initial welcome message like original assistant
     socket.send(JSON.stringify({
-      type: "response.create"
+      type: "conversation.item.create",
+      item: {
+        type: "message",
+        role: "user",
+        content: [
+          {
+            type: "input_text",
+            text: "Hello, can we get started by telling me the first steps?"
+          }
+        ]
+      }
     }));
   };
 
@@ -107,8 +120,16 @@ async function startStreamingAudio() {
   processor.onaudioprocess = (e) => {
     const inputData = e.inputBuffer.getChannelData(0);
     const int16Data = convertFloat32ToInt16(inputData);
+
     if (socket && socket.readyState === 1) {
-      socket.send(int16Data);
+      const base64Audio = btoa(
+        String.fromCharCode(...new Uint8Array(int16Data))
+      );
+
+      socket.send(JSON.stringify({
+        type: "input.audio",
+        audio: base64Audio
+      }));
     }
   };
 
