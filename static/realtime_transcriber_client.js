@@ -1,4 +1,4 @@
-// realtime_transcriber_client.js
+// realtime_transcriber_client.js (Streaming to Azure GPT-4o Realtime)
 
 let socket;
 let audioContext;
@@ -8,39 +8,56 @@ let globalStream;
 
 const status = document.getElementById('status');
 const replyAudio = document.getElementById('replyAudio');
+const conversation = document.getElementById('responseText');
 
 function setStatus(state) {
   status.className = state;
   status.textContent =
-    state === 'listening' ? 'Listening...' :
-    state === 'thinking' ? 'Thinking...' :
-    state === 'speaking' ? 'Speaking...' :
-    'Idle';
+    state === 'listening' ? 'Listening...'
+    : state === 'thinking' ? 'Thinking...'
+    : state === 'speaking' ? 'Speaking...'
+    : 'Idle';
+}
+
+function appendToConversation(role, text) {
+  const p = document.createElement('p');
+  p.textContent = `${role === 'user' ? '🟢 You' : '🤖 Assistant'}: ${text}`;
+  conversation.appendChild(p);
+  conversation.scrollTop = conversation.scrollHeight;
 }
 
 function initWebSocket() {
-  socket = new WebSocket('wss://' + window.location.host + '/stream-audio');
+  const AZURE_WS_URI = "wss://admin-m7q8p9qe-eastus2.cognitiveservices.azure.com/openai/realtime?api-version=2024-10-01-preview&deployment=gpt-4o-mini-realtime-preview&api-key=YOUR_AZURE_API_KEY";
+  socket = new WebSocket(AZURE_WS_URI);
 
   socket.onopen = () => {
     setStatus('listening');
     console.log('✅ WebSocket connected');
+    socket.send(JSON.stringify({
+      type: "session.update",
+      session: {
+        modalities: ["audio"],
+        instructions: "You are a helpful form-filling assistant. Ask questions one by one and extract values."
+      }
+    }));
+    socket.send(JSON.stringify({
+      type: "response.create"
+    }));
   };
 
   socket.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-    if (data.text) {
-      console.log('🤖 Assistant:', data.text);
-      setStatus('speaking');
-      window.appendAssistant?.(data.text);
+    const msg = JSON.parse(event.data);
+    const type = msg.type;
+
+    if (type === "response.text") {
+      const partial = msg.text;
+      console.log("✏️ Partial:", partial);
     }
-    if (data.audio_b64) {
-      console.log('🎧 Received audio response');
-      const audioBlob = new Blob([
-        Uint8Array.from(atob(data.audio_b64), c => c.charCodeAt(0))
-      ], { type: 'audio/wav' });
-      replyAudio.src = URL.createObjectURL(audioBlob);
-      replyAudio.play();
-      replyAudio.onended = () => setStatus('listening');
+    if (type === "response.text.done") {
+      const finalText = msg.text;
+      appendToConversation('assistant', finalText);
+      setStatus('speaking');
+      synthesizeSpeech(finalText);
     }
   };
 
@@ -53,6 +70,22 @@ function initWebSocket() {
     console.log('🔌 WebSocket closed');
     setStatus('idle');
   };
+}
+
+async function synthesizeSpeech(text) {
+  const response = await fetch("/tts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text })
+  });
+  const { audio_b64 } = await response.json();
+
+  const audioBlob = new Blob([
+    Uint8Array.from(atob(audio_b64), c => c.charCodeAt(0))
+  ], { type: 'audio/wav' });
+  replyAudio.src = URL.createObjectURL(audioBlob);
+  replyAudio.play();
+  replyAudio.onended = () => setStatus('listening');
 }
 
 async function startStreamingAudio() {
@@ -73,7 +106,6 @@ async function startStreamingAudio() {
 
   processor.onaudioprocess = (e) => {
     const inputData = e.inputBuffer.getChannelData(0);
-    console.log('🎙️ Captured audio frame');
     const int16Data = convertFloat32ToInt16(inputData);
     if (socket && socket.readyState === 1) {
       socket.send(int16Data);

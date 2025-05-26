@@ -1,15 +1,13 @@
-import asyncio
-import json
 import os
+import json
 import base64
-import tempfile
-from fastapi import FastAPI, Request, UploadFile, File, WebSocket
-from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
+from fastapi import FastAPI, Request, UploadFile, File, Body
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
+from openai import OpenAI
 from fill_pdf_logic import fill_pdf
-from stream_audio_ws_handler import handle_audio_stream
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -21,10 +19,6 @@ class ConfirmRequest(BaseModel):
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
-
-@app.websocket("/stream-audio")
-async def websocket_endpoint(websocket: WebSocket):
-    await handle_audio_stream(websocket)
 
 @app.get("/form-data")
 async def get_form_data():
@@ -52,3 +46,23 @@ async def confirm_form(request: ConfirmRequest):
 @app.get("/download")
 async def download_pdf():
     return FileResponse("output_filled.pdf", media_type="application/pdf", filename="Merchant_Form_Filled.pdf")
+
+@app.post("/tts")
+async def tts_endpoint(payload: dict = Body(...)):
+    try:
+        text = payload.get("text", "")
+        if not text:
+            return JSONResponse(content={"error": "No text provided"}, status_code=400)
+
+        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        speech = client.audio.speech.create(
+            model="tts-1",
+            voice="nova",
+            input=text,
+            response_format="wav"
+        )
+        audio_bytes = speech.content
+        b64_audio = base64.b64encode(audio_bytes).decode("utf-8")
+        return {"audio_b64": b64_audio}
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
