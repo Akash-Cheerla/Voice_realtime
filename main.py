@@ -18,7 +18,10 @@ class ConfirmRequest(BaseModel):
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse("index.html", {
+        "request": request,
+        "AZURE_API_KEY": os.getenv("AZURE_API_KEY")
+    })
 
 @app.get("/form-data")
 async def get_form_data():

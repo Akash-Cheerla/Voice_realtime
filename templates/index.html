@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Realtime Assistant</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Realtime Voice Assistant</title>
   <style>
     body {
       background-color: #121212;
@@ -16,67 +16,44 @@
     }
     h1 {
       color: #00ffc8;
-      margin-bottom: 1.5rem;
+      margin-bottom: 1rem;
     }
     #status {
-      margin-bottom: 1rem;
       padding: 0.5rem 1rem;
-      border-radius: 5px;
+      border-radius: 6px;
       font-weight: bold;
+      margin-bottom: 1rem;
     }
-    .listening {
-      background-color: #0057ff;
-      color: white;
-    }
-    .thinking {
-      background-color: #ffaa00;
-      color: black;
-    }
-    .speaking {
-      background-color: #00c853;
-      color: white;
-    }
+    .listening { background: #0057ff; color: white; }
+    .thinking  { background: #ffaa00; color: black; }
+    .speaking  { background: #00c853; color: white; }
     audio {
       margin-top: 1rem;
     }
-    #conversation {
-      margin-top: 2rem;
-      width: 90%;
-      max-width: 700px;
+    #responseText {
       background: #1e1e1e;
       padding: 1rem;
-      border-radius: 5px;
-    }
-    .msg {
-      margin-bottom: 1rem;
-    }
-    .user {
-      color: #42a5f5;
-    }
-    .assistant {
-      color: #66bb6a;
+      border-radius: 6px;
+      width: 100%;
+      max-width: 700px;
+      overflow-x: auto;
+      margin-top: 1rem;
     }
   </style>
 </head>
 <body>
-  <h1>🎙️ Realtime Assistant</h1>
-  <div id="status" class="listening">Listening...</div>
+  <h1>🎙️ Realtime Merchant Form Assistant</h1>
+  <div id="status" class="listening">Connecting...</div>
   <audio id="replyAudio" controls></audio>
-  <div id="conversation"></div>
+  <div id="responseText"></div>
 
-  <script src="/static/realtime_transcriber_client.js"></script>
   <script>
-    const convo = document.getElementById("conversation");
-    function appendMessage(text, role) {
-      const div = document.createElement("div");
-      div.className = `msg ${role}`;
-      div.textContent = `${role === "user" ? "👤" : "🤖"} ${text}`;
-      convo.appendChild(div);
-      convo.scrollTop = convo.scrollHeight;
-    }
-
-    window.appendUser = (text) => appendMessage(text, "user");
-    window.appendAssistant = (text) => appendMessage(text, "assistant");
+    const API_VERSION = "2024-10-01-preview";
+    const DEPLOYMENT = "gpt-4o-mini-realtime-preview";
+    const RESOURCE_HOST = "admin-m7q8p9qe-eastus2.cognitiveservices.azure.com";
+    const API_KEY = "{{ AZURE_API_KEY }}";  // injected from FastAPI
+    const WS_URI = `wss://${RESOURCE_HOST}/openai/realtime?api-version=${API_VERSION}&deployment=${DEPLOYMENT}&api-key=${API_KEY}`;
   </script>
+  <script src="/static/realtime_transcriber_client.js"></script>
 </body>
 </html>
