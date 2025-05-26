@@ -39,14 +39,22 @@
     audio {
       margin-top: 1rem;
     }
-    pre {
-      background: #222;
-      padding: 1rem;
-      border-radius: 5px;
-      margin-top: 1.5rem;
+    #conversation {
+      margin-top: 2rem;
       width: 90%;
       max-width: 700px;
-      overflow-x: auto;
+      background: #1e1e1e;
+      padding: 1rem;
+      border-radius: 5px;
+    }
+    .msg {
+      margin-bottom: 1rem;
+    }
+    .user {
+      color: #42a5f5;
+    }
+    .assistant {
+      color: #66bb6a;
     }
   </style>
 </head>
@@ -54,8 +62,21 @@
   <h1>🎙️ Realtime Assistant</h1>
   <div id="status" class="listening">Listening...</div>
   <audio id="replyAudio" controls></audio>
-  <pre id="responseText"></pre>
+  <div id="conversation"></div>
 
   <script src="/static/realtime_transcriber_client.js"></script>
+  <script>
+    const convo = document.getElementById("conversation");
+    function appendMessage(text, role) {
+      const div = document.createElement("div");
+      div.className = `msg ${role}`;
+      div.textContent = `${role === "user" ? "👤" : "🤖"} ${text}`;
+      convo.appendChild(div);
+      convo.scrollTop = convo.scrollHeight;
+    }
+
+    window.appendUser = (text) => appendMessage(text, "user");
+    window.appendAssistant = (text) => appendMessage(text, "assistant");
+  </script>
 </body>
 </html>

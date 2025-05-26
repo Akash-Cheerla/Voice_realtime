@@ -1,4 +1,4 @@
-// realtime_transcriber_client.js (replaces MediaRecorder loop)
+// realtime_transcriber_client.js
 
 let socket;
 let audioContext;
@@ -8,7 +8,6 @@ let globalStream;
 
 const status = document.getElementById('status');
 const replyAudio = document.getElementById('replyAudio');
-const responseText = document.getElementById('responseText');
 
 function setStatus(state) {
   status.className = state;
@@ -30,7 +29,9 @@ function initWebSocket() {
   socket.onmessage = (event) => {
     const data = JSON.parse(event.data);
     if (data.text) {
-      responseText.textContent = data.text;
+      console.log('🤖 Assistant:', data.text);
+      setStatus('speaking');
+      window.appendAssistant?.(data.text);
     }
     if (data.audio_b64) {
       const audioBlob = new Blob([
@@ -38,7 +39,6 @@ function initWebSocket() {
       ], { type: 'audio/wav' });
       replyAudio.src = URL.createObjectURL(audioBlob);
       replyAudio.play();
-      setStatus('speaking');
       replyAudio.onended = () => setStatus('listening');
     }
   };
