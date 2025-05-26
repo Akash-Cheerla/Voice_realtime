@@ -1,65 +1,9 @@
-<!-- <!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>Voice Assistant</title>
-</head>
-<body>
-  <h1>🎙️ Talk to Assistant</h1>
-  <button id="recordBtn">Start Recording</button>
-  <div id="log">Click and speak for 5 seconds...</div>
-  <audio id="replyAudio" controls style="margin-top: 20px;"></audio>
-
-  <script>
-    const btn = document.getElementById('recordBtn');
-    const log = document.getElementById('log');
-    const audioPlayer = document.getElementById('replyAudio');
-
-    btn.onclick = async () => {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      let chunks = [];
-
-      recorder.ondataavailable = e => chunks.push(e.data);
-      recorder.onstop = async () => {
-        const blob = new Blob(chunks, { type: 'audio/webm' });
-        const formData = new FormData();
-        formData.append('audio', blob, 'recording.webm');
-
-        log.textContent = 'Uploading...';
-
-        const res = await fetch('/upload-audio', {
-          method: 'POST',
-          body: formData
-        });
-
-        if (res.ok) {
-          const replyBlob = await res.blob();
-          audioPlayer.src = URL.createObjectURL(replyBlob);
-          log.textContent = '✅ Assistant replied!';
-        } else {
-          log.textContent = '❌ Error contacting assistant.';
-        }
-      };
-
-      recorder.start();
-      log.textContent = '🎙️ Listening...';
-
-      setTimeout(() => {
-        recorder.stop();
-        log.textContent = 'Processing...';
-      }, 5000); // Record 5s
-    };
-  </script>
-</body>
-</html> -->
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Realtime Assistant Demo</title>
+  <title>Realtime Assistant</title>
   <style>
     body {
       background-color: #121212;
@@ -70,27 +14,37 @@
       flex-direction: column;
       align-items: center;
     }
-    h1 { color: #00ffc8; }
-    button {
-      margin-top: 1rem;
-      padding: 0.7rem 1.4rem;
-      background-color: #1f1f1f;
-      border: 1px solid #00ffc8;
+    h1 {
       color: #00ffc8;
-      border-radius: 6px;
-      cursor: pointer;
+      margin-bottom: 1.5rem;
     }
-    button:hover {
-      background-color: #00ffc8;
-      color: #121212;
+    #status {
+      margin-bottom: 1rem;
+      padding: 0.5rem 1rem;
+      border-radius: 5px;
+      font-weight: bold;
     }
-    #replyAudio { margin-top: 1.5rem; }
+    .listening {
+      background-color: #0057ff;
+      color: white;
+    }
+    .thinking {
+      background-color: #ffaa00;
+      color: black;
+    }
+    .speaking {
+      background-color: #00c853;
+      color: white;
+    }
+    audio {
+      margin-top: 1rem;
+    }
     pre {
-      margin-top: 2rem;
       background: #222;
       padding: 1rem;
       border-radius: 5px;
-      width: 100%;
+      margin-top: 1.5rem;
+      width: 90%;
       max-width: 700px;
       overflow-x: auto;
     }
@@ -98,47 +52,10 @@
 </head>
 <body>
   <h1>🎙️ Realtime Assistant</h1>
-  <button onclick="startRecording()">Start Recording</button>
-  <button onclick="stopRecording()">Stop & Send</button>
+  <div id="status" class="listening">Listening...</div>
   <audio id="replyAudio" controls></audio>
   <pre id="responseText"></pre>
 
-  <script>
-    let recorder, audioChunks;
-
-    async function startRecording() {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      recorder = new MediaRecorder(stream);
-      audioChunks = [];
-
-      recorder.ondataavailable = e => audioChunks.push(e.data);
-
-      recorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-        const formData = new FormData();
-        formData.append('audio', audioBlob, 'recording.webm');
-
-        const res = await fetch('/upload-audio', { method: 'POST', body: formData });
-        if (res.ok) {
-          const { text, audio_b64 } = await res.json();
-          document.getElementById('responseText').textContent = text;
-
-          const audio = document.getElementById('replyAudio');
-          audio.src = 'data:audio/wav;base64,' + audio_b64;
-          audio.play();
-        } else {
-          alert("Something went wrong!");
-        }
-      };
-
-      recorder.start();
-    }
-
-    function stopRecording() {
-      if (recorder && recorder.state === 'recording') {
-        recorder.stop();
-      }
-    }
-  </script>
+  <script src="/static/realtime_transcriber_client.js"></script>
 </body>
 </html>
