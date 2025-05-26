@@ -11,3 +11,4 @@ numpy
 jinja2
 soundfile
 openai-whisper
+faster-whisper
