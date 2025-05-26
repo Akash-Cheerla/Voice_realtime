@@ -27,8 +27,13 @@ function appendToConversation(role, text) {
 }
 
 function initWebSocket() {
-  const AZURE_WS_URI = "wss://admin-m7q8p9qe-eastus2.cognitiveservices.azure.com/openai/realtime?api-version=2024-10-01-preview&deployment=gpt-4o-mini-realtime-preview&api-key=YOUR_AZURE_API_KEY";
-  socket = new WebSocket(AZURE_WS_URI);
+  const API_VERSION = "2024-10-01-preview";
+const DEPLOYMENT = "gpt-4o-mini-realtime-preview";
+const RESOURCE_HOST = "admin-m7q8p9qe-eastus2.cognitiveservices.azure.com";
+const API_KEY = "{{ AZURE_API_KEY }}";
+
+const WS_URI = `wss://${RESOURCE_HOST}/openai/realtime?api-version=${API_VERSION}&deployment=${DEPLOYMENT}&api-key=${API_KEY}`;
+  socket = new WebSocket(WS_URI);
 
   socket.onopen = () => {
     setStatus('listening');
@@ -40,22 +45,24 @@ function initWebSocket() {
         instructions: "You are a helpful form-filling assistant. Ask questions one by one and extract values."
       }
     }));
-    socket.send(JSON.stringify({ type: "response.create" }));
-
-    // 🗣️ Send initial welcome message like original assistant
     socket.send(JSON.stringify({
-      type: "conversation.item.create",
-      item: {
-        type: "message",
-        role: "user",
-        content: [
-          {
-            type: "input_text",
-            text: "Hello, can we get started by telling me the first steps?"
-          }
-        ]
+  type: "response.create"
+}));
+
+// 🗣️ Send initial welcome message like original assistant
+socket.send(JSON.stringify({
+  type: "conversation.item.create",
+  item: {
+    type: "message",
+    role: "user",
+    content: [
+      {
+        type: "input_text",
+        text: "Hello, can we get started by telling me the first steps?"
       }
-    }));
+    ]
+  }
+}));
   };
 
   socket.onmessage = (event) => {
@@ -118,20 +125,20 @@ async function startStreamingAudio() {
   processor = audioContext.createScriptProcessor(4096, 1, 1);
 
   processor.onaudioprocess = (e) => {
-    const inputData = e.inputBuffer.getChannelData(0);
-    const int16Data = convertFloat32ToInt16(inputData);
+  const inputData = e.inputBuffer.getChannelData(0);
+  const int16Data = convertFloat32ToInt16(inputData);
 
-    if (socket && socket.readyState === 1) {
-      const base64Audio = btoa(
-        String.fromCharCode(...new Uint8Array(int16Data))
-      );
+  if (socket && socket.readyState === 1) {
+    const base64Audio = btoa(
+      String.fromCharCode(...new Uint8Array(int16Data))
+    );
 
-      socket.send(JSON.stringify({
-        type: "input.audio",
-        audio: base64Audio
-      }));
-    }
-  };
+    socket.send(JSON.stringify({
+      type: "input.audio",
+      audio: base64Audio
+    }));
+  }
+};
 
   input.connect(processor);
   processor.connect(audioContext.destination);
